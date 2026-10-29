@@ -1,11 +1,10 @@
 import psutil
 import json
-from flask import Flask, request, jsonify
+from flask import Blueprint, request, jsonify
 from icon_extractor import extract_icon
 import os
 import base64
 import tempfile
-import logging
 
 # pycaw（Windows用オーディオ制御）インポート試行
 try:
@@ -15,14 +14,7 @@ try:
 except Exception:
     PYCAW_AVAILABLE = False
 
-# =======================
-# Flask アプリ初期化
-# =======================
-app = Flask(__name__)
-
-# Flask/Werkzeugのアクセスログを非表示（HTTP GET/POST行を抑制）
-logging.getLogger('werkzeug').setLevel(logging.ERROR)
-app.logger.disabled = True
+blueprint = Blueprint("dialAudioMixer", __name__)
 
 # 除外リストファイルの固定場所: 共通サーバー側で管理
 SERVER_ROOT = os.path.abspath(os.path.dirname(__file__))
@@ -53,7 +45,7 @@ def save_excluded(lst):
 # =======================
 # /excluded : 除外リストの取得
 # =======================
-@app.get("/excluded")
+@blueprint.get("/excluded")
 def get_excluded():
     try:
         return jsonify(load_excluded())
@@ -63,7 +55,7 @@ def get_excluded():
 # =======================
 # /apps : 音声セッションのあるアプリ一覧取得
 # =======================
-@app.get("/apps")
+@blueprint.get("/apps")
 def list_audio_apps():
     """アクティブ音声セッションのあるプロセス一覧を返す"""
     excluded = load_excluded()
@@ -112,7 +104,7 @@ def list_audio_apps():
 # =======================
 # /exclude : アプリ名を除外リストに追加
 # =======================
-@app.get("/exclude")
+@blueprint.get("/exclude")
 def add_exclude():
     name = request.args.get("name")
     if not name:
@@ -126,7 +118,7 @@ def add_exclude():
 # =======================
 # /unexclude : アプリ名を除外リストから削除
 # =======================
-@app.get("/unexclude")
+@blueprint.get("/unexclude")
 def remove_exclude():
     name = request.args.get("name")
     if not name:
@@ -141,7 +133,7 @@ def remove_exclude():
 # =======================
 # /mute : ミュート設定・解除
 # =======================
-@app.get("/mute_set")
+@blueprint.get("/mute_set")
 def set_mute_absolute():
     if not PYCAW_AVAILABLE:
         return jsonify({"status": "error", "message": "pycaw not installed"}), 500
@@ -167,7 +159,7 @@ def set_mute_absolute():
 # =======================
 # /volume_set : 絶対値で音量設定
 # =======================
-@app.get("/volume_set")
+@blueprint.get("/volume_set")
 def set_volume_absolute():
     if not PYCAW_AVAILABLE:
         return jsonify({"status": "error", "message": "pycaw not installed"}), 500
@@ -197,7 +189,7 @@ def set_volume_absolute():
 # =======================
 # /_log : デバッグログ受信
 # =======================
-@app.get("/_log")
+@blueprint.get("/_log")
 def receive_log():
     m = request.args.get("m")
     try:
@@ -209,7 +201,7 @@ def receive_log():
 # =======================
 # /icon : プロセスのアイコン取得
 # =======================
-@app.get('/icon')
+@blueprint.get("/icon")
 def get_icon():
     pid_arg = request.args.get('pid')
     if not pid_arg:
@@ -250,7 +242,7 @@ def get_icon():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # =======================
-# メイン実行
+# 登録
 # =======================
-if __name__ == "__main__":
-    app.run(port=8823)
+def register(app):
+    app.register_blueprint(blueprint)

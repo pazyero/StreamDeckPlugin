@@ -21,11 +21,10 @@ Python サーバーは別フォルダ `../server` に分離しています。
 
 2. サーバーを起動:
 
-   python helper.py
+   python server.py
 
 3. このプラグインフォルダを Stream Deck に配置するか、開発環境で WebSocket と接続します。
 
 注意:
 
 - images/\*.png はプレースホルダになっています。実際の PNG を用意してください。
-- `helper.py` の `/volume` 実装は現在ダミーです。WASAPI 等での実装が必要です。

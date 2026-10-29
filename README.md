@@ -20,9 +20,12 @@
 DialAudioMixer/
 ├─ server/
 │  ├─ helper.py
+│  ├─ server.py
 │  ├─ icon_extractor.py
-│  ├─ requirements.txt
-│  └─ exclude.json
+│  ├─ com.shay.dialaudiomixer.sdPlugin/
+│  │  ├─ dialAudioMixer.py
+│  │  └─ exclude.json
+│  └─ requirements.txt
 ├─ streamdeck/
 │  └─ com.shay.dialaudiomixer.sdPlugin/
 │     ├─ manifest.json
@@ -36,7 +39,10 @@ DialAudioMixer/
 └─ ...
 ```
 
-- `server/` には共通の Python API とオーディオ制御を置く
+- `server/server.py` がメインサーバーとして各機能モジュールを登録する
+- `server/dialAudioMixer.py` に音声ミキサー機能を置く
+- `server/icon_extractor.py` に共通処理を置く
+- `server/helper.py` は従来の起動方法との互換用エントリーポイント
 - `streamdeck/` には Stream Deck UI / WebSocket / 表示処理を置く
 - 今後の機能追加は、Python 側は `server` に、Stream Deck 側は `streamdeck` に追加していく構成
 
@@ -64,7 +70,7 @@ DialAudioMixer/
 1. このリポジトリをダウンロードまたはクローン
 2. `streamdeck/com.shay.dialaudiomixer.sdPlugin` を Stream Deck のプラグイン格納先に配置
 3. `server` 側で依存ライブラリをインストール
-4. `server/helper.py` を起動してローカル API を待機
+4. `server/server.py` を起動してローカル API を待機
 5. Stream Deck にプラグインを読み込ませて利用
 
 ---
@@ -81,7 +87,7 @@ DialAudioMixer/
 ## 開発用
 
 - Stream Deck 側: `streamdeck/com.shay.dialaudiomixer.sdPlugin/`
-- Python サーバー: `server/helper.py`
+- Python サーバー: `server/server.py`
 - アイコン抽出: `server/icon_extractor.py`
 
 ### 起動
@@ -91,5 +97,5 @@ Python サーバーを手動で起動する場合:
 ```bash
 cd server
 pip install -r requirements.txt
-python helper.py
+python server.py
 ```
