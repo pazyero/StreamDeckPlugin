@@ -24,9 +24,9 @@ app = Flask(__name__)
 logging.getLogger('werkzeug').setLevel(logging.ERROR)
 app.logger.disabled = True
 
-# 除外リストファイルの固定場所: プラグインルートに置く
-PLUGIN_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-EXCLUDE_FILE = os.path.join(PLUGIN_ROOT, 'exclude.json')
+# 除外リストファイルの固定場所: 共通サーバー側で管理
+SERVER_ROOT = os.path.abspath(os.path.dirname(__file__))
+EXCLUDE_FILE = os.path.join(SERVER_ROOT, 'exclude.json')
 
 # 初期化: 除外リストファイルが無ければ作成
 if not os.path.exists(EXCLUDE_FILE):
