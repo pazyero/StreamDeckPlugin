@@ -1,4 +1,4 @@
-# DialAudioMixer for Stream Deck
+# DialAudioMixer for Stream Deck +
 
 ## 概要
 
