@@ -1,0 +1,47 @@
+{
+  "Actions": [
+    {
+      "Name": "Mic Controller",
+      "UUID": "com.shay.miccontroller.action",
+      "Icon": "images/actionIcon",
+      "Tooltip": "Control microphone devices",
+      "SupportedInMultiActions": true,
+      "States": [
+        {
+          "Image": "images/muteIcon",
+          "Name": "Mode 1: Mute",
+          "TitleAlignment": "middle",
+          "FontSize": 16
+        },
+        {
+          "Image": "images/unmuteIcon",
+          "Name": "Mode 2: Unmute",
+          "TitleAlignment": "middle",
+          "FontSize": 16
+        }
+      ],
+      "Controllers": ["Keypad"]
+    }
+  ],
+  "UUID": "com.shay.miccontroller",
+  "SDKVersion": 2,
+  "MinimumVersion": "6.0.0",
+  "Author": "Shay",
+  "Name": "Mic Controller",
+  "URL": "https://example.com/",
+  "Version": "0.1.0",
+  "Description": "Microphone controller for Stream Deck.",
+  "Category": "Mic Controller",
+  "Icon": "images/icon",
+  "CategoryIcon": "images/categoryIcon",
+  "CodePath": "plugin.html",
+  "Software": {
+    "MinimumVersion": "6.0.0"
+  },
+  "OS": [
+    {
+      "Platform": "windows",
+      "MinimumVersion": "10"
+    }
+  ]
+}

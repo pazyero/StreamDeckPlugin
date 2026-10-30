@@ -1,16 +1,25 @@
-import importlib
 import logging
 import importlib.util
+import sys
+import traceback
 from pathlib import Path
 
-from flask import Flask
+from flask import Flask, jsonify
+
+
+SERVER_ROOT = Path(__file__).resolve().parent
+if str(SERVER_ROOT) not in sys.path:
+    sys.path.insert(0, str(SERVER_ROOT))
 
 
 # Add another feature module here. Each module must provide register(app).
 MODULES = (
-    Path(__file__).parent
+    SERVER_ROOT
     / "com.shay.dialaudiomixer.sdPlugin"
     / "dialAudioMixer.py",
+    SERVER_ROOT
+    / "com.shay.miccontroller.sdPlugin"
+    / "micController.py",
 )
 
 
@@ -19,6 +28,16 @@ def create_app():
 
     logging.getLogger("werkzeug").setLevel(logging.ERROR)
     app.logger.disabled = True
+
+    @app.errorhandler(Exception)
+    def handle_unexpected_error(error):
+        print("[Server] Unexpected exception:")
+        traceback.print_exc()
+        return jsonify({
+            "status": "error",
+            "ok": False,
+            "message": f"Server error: {error}",
+        }), 500
 
     for module_name in MODULES:
         module_name = Path(module_name)
@@ -42,4 +61,12 @@ app = create_app()
 
 
 if __name__ == "__main__":
-    app.run(port=8823)
+    try:
+        app.run(
+            host="127.0.0.1",
+            port=8823,
+            threaded=True,
+            use_reloader=False,
+        )
+    except KeyboardInterrupt:
+        print("\nServer stopped.")
