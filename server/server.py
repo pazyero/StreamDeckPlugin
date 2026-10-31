@@ -1,3 +1,9 @@
+"""Stream Deckプラグイン向けローカルHTTPサーバー。
+
+FEATURESに列挙された機能モジュールからFlask Blueprintを動的に登録し、
+127.0.0.1:8823で全機能への共通API窓口を提供する。
+"""
+
 import logging
 import importlib.util
 import sys
@@ -7,12 +13,13 @@ from pathlib import Path
 from flask import Flask, jsonify
 
 
+# サーバーディレクトリをPythonの検索パスへ追加し、機能モジュールを相対位置から読めるようにする。
 SERVER_ROOT = Path(__file__).resolve().parent
 if str(SERVER_ROOT) not in sys.path:
     sys.path.insert(0, str(SERVER_ROOT))
 
 
-# Add another feature module here. Each module must provide register(app).
+# 機能モジュール一覧。各モジュールはregister(app)を提供する必要がある。
 MODULES = (
     SERVER_ROOT
     / "com.shay.dialaudiomixer.sdPlugin"
@@ -24,6 +31,7 @@ MODULES = (
 
 
 def create_app():
+    """Flaskアプリを生成し、共通例外処理と機能モジュールを登録する。"""
     app = Flask(__name__)
 
     logging.getLogger("werkzeug").setLevel(logging.ERROR)
@@ -31,6 +39,7 @@ def create_app():
 
     @app.errorhandler(Exception)
     def handle_unexpected_error(error):
+        """未処理例外をスタックトレース付きで記録し、統一形式でAPIへ返す。"""
         print("[Server] Unexpected exception:")
         traceback.print_exc()
         return jsonify({
@@ -40,6 +49,7 @@ def create_app():
         }), 500
 
     for module_name in MODULES:
+        # モジュールをファイル名から動的ロードし、提供されるregister関数でBlueprintを登録する。
         module_name = Path(module_name)
         module_id = module_name.stem
         spec = importlib.util.spec_from_file_location(module_id, module_name)

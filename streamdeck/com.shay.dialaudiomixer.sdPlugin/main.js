@@ -1,6 +1,7 @@
 // =======================
 // DialAudioMixer main.js
 // =======================
+// Stream Deckダイヤルのイベントを受け、ローカルサーバーへ音量・ミュート操作を送る。
 
 // WebSocket接続用
 let websocket = null;
@@ -12,8 +13,8 @@ let actionContext = null;
 let title = "(No Audio Apps)";
 // 設定保持用
 let settings = {};
-// 中断コントローラー（fetchタイムアウト用）
-const timeoutId = setTimeout(() => controller.abort(), 500); // 500ms = 0.5秒
+// setFeedback用画像やアイコンを生成する際に参照するCanvas画像パス。
+const timeoutId = setTimeout(() => controller.abort(), 500); // フェッチ処理のタイムアウト予約
 
 const muteOverlaySrc = "./images/mute_overlay.png"; // 144x144, 透明背景
 
@@ -44,6 +45,7 @@ sendDebug('loaded render');
 // プラグイン接続・イベント処理
 // =======================
 function connectElgatoPlugin(inUUID, inMessage, inAppInfo, inActionInfo) {
+  // Stream Deck本体とのWebSocketを確立し、登録完了後にUI更新処理を開始する。
   pluginUUID = inUUID;
   try {
     websocket = new WebSocket("ws://127.0.0.1:" + inAppInfo.port);
@@ -54,6 +56,7 @@ function connectElgatoPlugin(inUUID, inMessage, inAppInfo, inActionInfo) {
   }
 
   websocket.onopen = function () {
+    // プラグイン登録イベントを送信し、一覧取得と定期ポーリングを開始する。
     const json = { event: inMessage, uuid: inUUID };
     try { websocket.send(JSON.stringify(json)); } catch (e) {}
 
@@ -66,6 +69,7 @@ function connectElgatoPlugin(inUUID, inMessage, inAppInfo, inActionInfo) {
   };
 
   websocket.onmessage = function (evt) {
+    // Stream DeckからのJSONイベントを解析し、操作種別ごとに処理を振り分ける。
     let msg = null;
     try { msg = JSON.parse(evt.data); } catch (e) { return; }
 
@@ -99,6 +103,7 @@ function connectElgatoPlugin(inUUID, inMessage, inAppInfo, inActionInfo) {
 
 
     // ダイヤル回転イベント
+    // ticks/rotation/deltaのいずれかが流れてきても、共通して音量調整へ渡す。
     let ticks = 0;
     if (msg.payload) {
       if (msg.payload.ticks !== undefined) ticks = msg.payload.ticks;
@@ -145,6 +150,7 @@ async function fetchIconForApp(pid, name) {
 
 // 現在選択中のアプリを取得
 function getActiveApp() {
+  // 1始まりのcurrentIndexを配列位置へ変換し、現在選択中のアプリを返す。
   if (apps.length === 0) return null;
   const idx = currentIndex - 1;
   if (idx < 0 || idx >= apps.length) return null;
@@ -153,6 +159,7 @@ function getActiveApp() {
 
 // 次のアプリに切り替え
 function rotateNextApp() {
+  // ダイヤル押下で選択アプリを循環切り替えし、フィードバック表示を更新する。
   if (apps.length === 0) { fetchApps(); return; }
   currentIndex = currentIndex + 1;
   if (currentIndex > apps.length) currentIndex = 1;
@@ -163,6 +170,7 @@ function rotateNextApp() {
 
 // ダイヤルタイトル（アプリ名 + 音量）更新
 async function updateDialTitle() {
+  // アプリ名、音量、ミュート状態、アイコンを合成し、Stream DeckへsetFeedbackで送る。
   if (!websocket || websocket.readyState !== 1) return;
 
   const app = getActiveApp();
@@ -187,6 +195,7 @@ async function updateDialTitle() {
 
 // 音量表示更新
 function updateVolumeDisplay() {
+  // Web表示とStream Deck表示の両方へ、現在の音量状態を反映する。
   volume = 0.0;
   const app = getActiveApp();
   if (app){
@@ -222,6 +231,7 @@ function updateVolumeDisplay() {
 //  ミュート切替
 // =======================
 function adjustMute() {
+  // タッチ操作時に現在アプリのミュート状態を反転し、サーバーへ即時通知する。
   const app = getActiveApp();
   if (!app) return;
 
@@ -243,6 +253,7 @@ function adjustMute() {
 // 音量調整
 // =======================
 function adjustVolume(ticks) {
+  // ダイヤルの回転量へ応じて1ステップずつ音量を変更し、表示とサーバーを更新する。
   const step = 0.03;
   const app = getActiveApp();
   if (!app) return;
@@ -261,6 +272,7 @@ function adjustVolume(ticks) {
 // アプリ一覧取得
 // =======================
 function fetchApps() {
+  // サーバーからアプリ一覧を取得し、既存選択位置を維持しながら最新状態へ更新する。
   fetch('http://127.0.0.1:8823/apps')
     .then(res => res.json())
     .then(list => {
@@ -292,6 +304,7 @@ function fetchApps() {
 // ダイヤル用画像生成（Base64 PNG）
 // =======================
 function renderImageForDial(title, volPercent, muted = false, iconSrc = null) {
+  // 144x144のCanvasへアイコンまたは円形ゲージを描き、base64 PNGとして返す。
   return new Promise((resolve) => {
     const size = 144;
     const canvas = document.createElement('canvas');

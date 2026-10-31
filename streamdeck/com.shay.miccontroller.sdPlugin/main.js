@@ -1,3 +1,4 @@
+// HyperX SoloCastの接続状態とミュート状態をStream Deckへ反映するプラグイン。
 let websocket = null;
 let pluginUUID = null;
 const contexts = new Map();
@@ -6,10 +7,12 @@ const API_BASE = "http://127.0.0.1:8823";
 let statusEventSource = null;
 
 function connectElgatoStreamDeckSocket(inPort, inUUID, inRegisterEvent, inInfo) {
+  // Stream Deck本体とのWebSocket接続を確立するエントリーポイント。
   pluginUUID = inUUID;
   websocket = new WebSocket("ws://127.0.0.1:" + inPort);
 
   websocket.onopen = function () {
+    // プラグイン登録後に、サーバーからの状態更新購読を開始する。
     websocket.send(JSON.stringify({
       event: inRegisterEvent,
       uuid: inUUID
@@ -19,6 +22,7 @@ function connectElgatoStreamDeckSocket(inPort, inUUID, inRegisterEvent, inInfo) 
   };
 
   websocket.onmessage = function (event) {
+    // 表示・設定・キー操作・非表示イベントをコンテキストごとに処理する。
     let message;
     try {
       message = JSON.parse(event.data);
@@ -44,6 +48,7 @@ function connectElgatoStreamDeckSocket(inPort, inUUID, inRegisterEvent, inInfo) 
 }
 
 function connectStatusEvents() {
+  // SSEからミュート状態を受け取り、すべての表示中ボタンへ反映する。
   disconnectStatusEvents();
   statusEventSource = new EventSource(API_BASE + "/miccontroller/events");
 
@@ -70,6 +75,7 @@ function disconnectStatusEvents() {
 }
 
 async function refreshStatus() {
+  // SSEが利用できない場合に備え、RESTで現在状態を再取得する。
   try {
     const response = await fetch(
       API_BASE + "/miccontroller/status?_=" + Date.now(),
@@ -84,6 +90,7 @@ async function refreshStatus() {
 }
 
 async function toggleMute(context) {
+  // ボタン押下時は即座に見た目を反転し、その後サーバーの実際の状態で補正する。
   const currentMuted = displayedStates.get(context) === true;
   const desiredMuted = !currentMuted;
   displayedStates.set(context, desiredMuted);

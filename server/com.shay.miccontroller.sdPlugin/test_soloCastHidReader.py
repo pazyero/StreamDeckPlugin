@@ -13,6 +13,7 @@ from soloCastHidReader import (
 
 
 class SoloCastHidReaderTests(unittest.TestCase):
+    """HIDレポート解析、デバイス選択、ミュート同期の回帰テスト。"""
     def test_monitor_initial_snapshot(self):
         monitor = SoloCastHidMonitor()
         snapshot = monitor.snapshot()
