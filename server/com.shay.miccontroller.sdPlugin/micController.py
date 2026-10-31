@@ -6,10 +6,16 @@ SoloCastHidMonitorをバックグラウンド監視し、HTTP APIとSSEで現在
 import importlib.util
 import atexit
 import json
-import traceback
 from pathlib import Path
+import sys
 
 from flask import Blueprint, jsonify, Response
+
+SERVER_ROOT = Path(__file__).resolve().parent.parent
+if str(SERVER_ROOT) not in sys.path:
+    sys.path.insert(0, str(SERVER_ROOT))
+
+from common_logging import log_output
 
 
 blueprint = Blueprint("micController", __name__)
@@ -93,8 +99,7 @@ def toggle_microphone():
     try:
         result = monitor.toggle_mute()
     except Exception as error:
-        print("[Mic Controller] Toggle exception:")
-        traceback.print_exc()
+        log_output("Toggle exception","error",logger_name="micController",exc_info=True,)
         result = {
             "status": "error",
             "ok": False,
@@ -118,7 +123,7 @@ def toggle_microphone():
             mimetype="application/json",
         )
     except Exception as error:
-        traceback.print_exc()
+        log_output("Toggle response error","error",logger_name="micController",exc_info=True,)
         return Response(
             json.dumps(
                 {

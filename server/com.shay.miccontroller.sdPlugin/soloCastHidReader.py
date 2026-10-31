@@ -5,15 +5,23 @@ HIDインターフェイスからミュートボタン状態を読み取り、py
 """
 
 import argparse
-import logging
 import os
 import time
 import threading
 import warnings
+import sys
+from pathlib import Path
 from queue import Queue
 from typing import Iterable, Optional
 
 import hid
+
+SERVER_ROOT = Path(__file__).resolve().parent.parent
+if str(SERVER_ROOT) not in sys.path:
+    sys.path.insert(0, str(SERVER_ROOT))
+
+from common_logging import configure_logging as configure_common_logging
+from common_logging import log_output
 
 
 VID = 0x03F0
@@ -88,9 +96,8 @@ def print_device(device: dict) -> None:
             value = device[key]
             if isinstance(value, bytes):
                 value = os.fsdecode(value)
-            print(f"{key}: {value}")
-    print("mi_02: ", "yes" if is_mi_02_path(device) else "no")
-    print()
+            log_output(f"{key}: {value}", logger_name="soloCastHidReader")
+    log_output(f"mi_02: {'yes' if is_mi_02_path(device) else 'no'}",logger_name="soloCastHidReader",)
 
 
 def open_device(device: dict):
@@ -108,28 +115,40 @@ def probe_mi_02_devices(
     mi_02_devices = [device for device in devices if is_mi_02_path(device)]
     for device in mi_02_devices:
         reader = None
-        print(
+        log_output(
             "Probing interface "
             f"{device.get('interface_number')} "
             f"usage_page={device.get('usage_page')} "
             f"usage={device.get('usage')} "
-            f"path={device.get('path')}"
+            f"path={device.get('path')}",
+            logger_name="soloCastHidReader",
         )
         try:
             reader = open_device(device)
             report = reader.read(16, max(1, read_timeout_ms))
             if report:
-                print(f"report={format_hex(report)} bytes={len(report)}")
+                log_output(
+                    f"report={format_hex(report)} bytes={len(report)}",
+                    logger_name="soloCastHidReader",
+                )
             else:
-                print("report=None")
+                log_output("report=None", logger_name="soloCastHidReader")
         except Exception as error:
-            print(f"open/read error: {error}")
+            log_output(
+                f"open/read error: {error}",
+                "error",
+                logger_name="soloCastHidReader",
+            )
         finally:
             if reader is not None:
                 try:
                     reader.close()
                 except Exception as error:
-                    logging.warning("Failed to close HID device: %s", error)
+                    log_output(
+                        f"Failed to close HID device: {error}",
+                        "warning",
+                        logger_name="soloCastHidReader",
+                    )
 
 
 def read_reports(
@@ -147,15 +166,16 @@ def read_reports(
                 devices = enumerate_solo_cast_devices()
                 selected = select_solo_cast_hid_device(devices)
                 if selected is None:
-                    logging.warning(
-                        "HyperX SoloCast HID device not found (VID=%04X PID=%04X); retrying",
-                        VID,
-                        PID,
+                    log_output(
+                        f"HyperX SoloCast HID device not found "
+                        f"(VID={VID:04X} PID={PID:04X}); retrying",
+                        "warning",
+                        logger_name="soloCastHidReader",
                     )
                     time.sleep(DEFAULT_RECONNECT_DELAY_SECONDS)
                     continue
 
-                print("Selected HID device:")
+                log_output("Selected HID device:", logger_name="soloCastHidReader")
                 print_device(selected)
                 reader = open_device(selected)
 
@@ -166,42 +186,50 @@ def read_reports(
             report_hex = format_hex(report)
             state = parse_mute_state(report, state_index)
             if report_hex != last_report_hex:
-                print(
+                log_output(
                     f"report={report_hex} bytes={len(report)} "
-                    f"state_index={state_index}"
+                    f"state_index={state_index}",
+                    logger_name="soloCastHidReader",
                 )
                 last_report_hex = report_hex
             else:
                 time.sleep(0.05)
 
             if state is not None and state != last_state:
-                logging.info("Mute state changed: %s", "MUTE" if state else "UNMUTE")
+                log_output(
+                    f"Mute state changed: {'MUTE' if state else 'UNMUTE'}",
+                    logger_name="soloCastHidReader",
+                )
                 last_state = state
 
         except KeyboardInterrupt:
             if reader is not None:
                 try:
-                    with self._reader_lock:
-                        reader.close()
+                    reader.close()
                 except Exception:
                     pass
-            print("\nHID reader stopped.")
+            log_output("\nHID reader stopped.", logger_name="soloCastHidReader")
             return
         except (OSError, IOError) as error:
-            logging.warning("HID read/open failure: %s; reconnecting", error)
+            log_output(
+                f"HID read/open failure: {error}; reconnecting",
+                "warning",
+                logger_name="soloCastHidReader",
+            )
             reader = None
             time.sleep(DEFAULT_RECONNECT_DELAY_SECONDS)
         except Exception as error:
-            logging.error("Unexpected HID error: %s; reconnecting", error)
+            log_output(
+                f"Unexpected HID error: {error}; reconnecting",
+                "error",
+                logger_name="soloCastHidReader",
+            )
             reader = None
             time.sleep(DEFAULT_RECONNECT_DELAY_SECONDS)
 
 
 def configure_logging() -> None:
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(message)s",
-    )
+    configure_common_logging()
 
 
 class SoloCastHidMonitor:
@@ -481,9 +509,9 @@ class SoloCastHidMonitor:
                     pass
 
         if should_print:
-            print(
+            log_output(
                 f"[Mic Controller] Mute state changed: {'MUTE' if state else 'UNMUTE'}",
-                flush=True,
+                logger_name="soloCastHidReader",
             )
 
     def _run(self) -> None:
@@ -582,10 +610,17 @@ def main() -> int:
 
     devices = enumerate_solo_cast_devices()
     if not devices:
-        print(f"No HID device found for VID=0x{VID:04X}, PID=0x{PID:04X}")
+        log_output(
+            f"No HID device found for VID=0x{VID:04X}, PID=0x{PID:04X}",
+            "warning",
+            logger_name="soloCastHidReader",
+        )
         return 1 if args.enumerate_only else 0
 
-    print(f"Found {len(devices)} matching HID device(s):")
+    log_output(
+        f"Found {len(devices)} matching HID device(s):",
+        logger_name="soloCastHidReader",
+    )
     for device in devices:
         print_device(device)
 

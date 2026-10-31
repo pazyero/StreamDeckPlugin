@@ -4,6 +4,7 @@ import win32gui
 import win32con
 import win32api
 from PIL import Image
+from common_logging import log_output
 
 def extract_icon(exe_path, output_png):
     """
@@ -70,7 +71,11 @@ def extract_icon(exe_path, output_png):
 
     if img is None:
         # 全て失敗
-        print(f"[icon_extractor] 画像作成失敗, 試行エラー: {errors}")
+        log_output(
+            f"画像作成失敗, 試行エラー: {errors}",
+            "error",
+            logger_name="icon_extractor",
+        )
         try:
             win32gui.DestroyIcon(hicon)
         except Exception:

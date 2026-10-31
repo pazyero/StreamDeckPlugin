@@ -11,6 +11,14 @@ from icon_extractor import extract_icon
 import os
 import base64
 import tempfile
+import sys
+from pathlib import Path
+
+SERVER_ROOT = Path(__file__).resolve().parent.parent
+if str(SERVER_ROOT) not in sys.path:
+    sys.path.insert(0, str(SERVER_ROOT))
+
+from common_logging import log_output
 
 # pycawが利用できない環境でもサーバー自体は起動できるよう、利用可否を判定する。
 try:
@@ -33,7 +41,7 @@ if not os.path.exists(EXCLUDE_FILE):
         with open(EXCLUDE_FILE, "w", encoding="utf-8") as f:
             json.dump([], f)
     except Exception as e:
-        print(f"[helper] failed to create exclude file: {e}")
+        log_output(f"failed to create exclude file: {e}", "error", logger_name="dialAudioMixer")
 
 # =======================
 # 除外リスト読み込み/保存
@@ -90,14 +98,17 @@ def list_audio_apps():
                         current_volume = 0.0
 
                     final_volume = min(1.0, max(0.0, current_volume + (0 / 100.0)))
-                    print(f"[/apps] pid={session.Process.pid}, name={name}, vol={final_volume}, mute={current_mute}")
+                    log_output(
+                        f"pid={session.Process.pid}, name={name}, vol={final_volume}, mute={current_mute}",
+                        logger_name="dialAudioMixer",
+                    )
                     if name not in excluded and name not in seen_names:
                         result.append({"pid": session.Process.pid,"mute": current_mute, "name": name, "volume": final_volume})
                         seen_names.add(name)
                 except Exception:
                     pass
         except Exception as e:
-            print(f"[/apps] ERROR: {e}")
+            log_output(f"ERROR: {e}", "error", logger_name="dialAudioMixer")
     else:
         # pycawが利用できない場合は全プロセスを返す（重複除去）
         for p in psutil.process_iter(["pid", "name"]):
@@ -206,9 +217,9 @@ def receive_log():
     """main.jsから送られるデバッグログをサーバーコンソールへ出力する。"""
     m = request.args.get("m")
     try:
-        print(f"[main.js] {m}")
+        log_output(f"{m}", "debug", logger_name="dialAudioMixer")
     except Exception:
-        print("[main.js] <unprintable message>")
+        log_output("<unprintable message>", "error", logger_name="dialAudioMixer")
     return jsonify({"status": "ok"})
 
 # =======================
@@ -229,7 +240,7 @@ def get_icon():
         p = psutil.Process(pid)
         exe_path = p.exe()
     except Exception as e:
-        print(f"[/icon] process lookup error: {e}")
+        log_output(f"process lookup error: {e}", "error", logger_name="dialAudioMixer")
         return jsonify({"status": "error", "message": "process not found"}), 404
 
     tmp = None
@@ -249,7 +260,7 @@ def get_icon():
         except Exception: pass
         return jsonify({"status": "ok", "data_url": data_url})
     except Exception as e:
-        print(f"[/icon] ERROR: {e}")
+        log_output(f"ERROR: {e}", "error", logger_name="dialAudioMixer")
         if tmp:
             try: os.remove(tmp.name)
             except Exception: pass
