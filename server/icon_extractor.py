@@ -4,13 +4,45 @@ import win32gui
 import win32con
 import win32api
 from PIL import Image
+from common_logging import log_output
 
 def extract_icon(exe_path, output_png):
-    """
-    指定した実行ファイルからアイコンを抽出してPNGとして保存する関数。
-    exe_path: 抽出元の実行ファイルパス
-    output_png: 保存先のPNGファイルパス
-    """
+# 指定した実行ファイルからアイコンを抽出してPNGとして保存する関数。
+# exe_path: アイコンを抽出する実行ファイルのパス
+# output_png: PNG画像の保存先パス
+    large = []
+    small = []
+    hicon = None
+    hdc = None
+    hdc_obj = None
+    hbmp = None
+    hbm_color = None
+    def cleanup_resources():
+        for handle in set(large + small):
+            try:
+                win32gui.DestroyIcon(handle)
+            except Exception:
+                pass
+        if hbm_color is not None:
+            try:
+                win32gui.DeleteObject(hbm_color)
+            except Exception:
+                pass
+        if hdc_obj is not None:
+            try:
+                hdc_obj.DeleteDC()
+            except Exception:
+                pass
+        if hbmp is not None:
+            try:
+                hbmp.DeleteObject()
+            except Exception:
+                pass
+        if hdc is not None:
+            try:
+                hdc.DeleteDC()
+            except Exception:
+                pass
     # 大/小アイコンを取得
     large, small = win32gui.ExtractIconEx(exe_path, 0)
     if not large and not small:
@@ -22,6 +54,7 @@ def extract_icon(exe_path, output_png):
     # アイコン情報を取得
     icon_info = win32gui.GetIconInfo(hicon)
     hbmColor = icon_info[4]
+    hbm_color = hbmColor
 
     # ビットマップ情報の取得
     bmpinfo = win32gui.GetObject(hbmColor)
@@ -70,11 +103,16 @@ def extract_icon(exe_path, output_png):
 
     if img is None:
         # 全て失敗
-        print(f"[icon_extractor] 画像作成失敗, 試行エラー: {errors}")
+        log_output(
+            f"画像作成失敗, 試行エラー: {errors}",
+            "error",
+            logger_name="icon_extractor",
+        )
         try:
             win32gui.DestroyIcon(hicon)
         except Exception:
             pass
+        cleanup_resources()
         return False
 
     # RGBA形式に変換して保存
@@ -87,5 +125,6 @@ def extract_icon(exe_path, output_png):
         win32gui.DestroyIcon(hicon)
     except Exception:
         pass
+    cleanup_resources()
 
     return True

@@ -1,8 +1,10 @@
+// Property Inspector: サーバーへ問い合わせるアプリ一覧と除外設定を表示する。
 const list = document.getElementById("appList");
 const excludedList = document.getElementById("excludedList");
 const refreshBtn = document.getElementById("refresh");
 
 async function loadApps() {
+  // 現在の音量セッション一覧を取得し、除外ボタン付きで再描画する。
   try {
     const r = await fetch("http://127.0.0.1:8823/apps");
     const apps = await r.json();
@@ -20,6 +22,7 @@ async function loadApps() {
 }
 
 async function loadExcluded() {
+  // 除外済みアプリ一覧を取得し、解除ボタン付きで再描画する。
   try {
     const r = await fetch("http://127.0.0.1:8823/excluded");
     const items = await r.json();
@@ -35,6 +38,7 @@ async function loadExcluded() {
   }
 }
 
+// 手動更新と初回/定期更新で同じ一覧更新処理を再利用する。
 refreshBtn.onclick = loadApps;
 
 // Auto-refresh every 3 seconds
@@ -43,6 +47,7 @@ loadApps();
 loadExcluded();
 
 list.onclick = async (e) => {
+  // 表示中アプリの除外ボタンからアプリ名を取得し、一覧へ反映する。
   if (e.target.tagName === "BUTTON") {
     const name = e.target.dataset.name;
     await fetch(`http://127.0.0.1:8823/exclude?name=${name}`);
@@ -52,6 +57,7 @@ list.onclick = async (e) => {
 };
 
 excludedList.onclick = async (e) => {
+  // 除外解除ボタンで指定アプリを解除し、両方の一覧へ変更を反映する。
   if (e.target.tagName === "BUTTON") {
     const name = e.target.dataset.name;
     await fetch(`http://127.0.0.1:8823/unexclude?name=${name}`);

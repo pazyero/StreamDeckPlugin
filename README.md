@@ -1,101 +1,153 @@
-# DialAudioMixer for Stream Deck +
+# DialAudioMixer and Mic Controller for Stream Deck
 
 ## 概要
 
-**DialAudioMixer** は、Elgato Stream Deck 用のプラグインで、Windows 上のアクティブなオーディオアプリを管理し、ダイヤル操作で個別アプリの音量を調整できるプラグインです。
+このリポジトリには、WindowsとStream Deck向けの2つのプラグインがあります。
 
-- Stream Deck のダイヤル（エンコーダー）で音量操作
-- アクティブなアプリを自動検出
-- アイコンと音量を Stream Deck 上に表示
-- アプリの除外リスト機能
-- 音量の増減・絶対設定対応
-
----
+- **Dial Audio Mixer**
+  - アクティブなオーディオアプリを検出
+  - ダイヤルまたはキー操作で個別アプリの音量を変更
+  - アプリの除外設定を管理
+  - アプリ名、音量、アイコンをStream Deckへ表示
+- **Mic Controller**
+  - HyperX SoloCastのミュート状態を監視
+  - マイク本体操作とStream Deck操作を相互同期
 
 ## プロジェクト構成
 
-将来の機能追加を前提に、Python サーバーと Stream Deck 側を分離して保管します。
-
 ```text
-DialAudioMixer/
+StreamDeckPlugin/
 ├─ server/
-│  ├─ helper.py
 │  ├─ server.py
 │  ├─ icon_extractor.py
 │  ├─ com.shay.dialaudiomixer.sdPlugin/
 │  │  ├─ dialAudioMixer.py
 │  │  └─ exclude.json
-│  └─ requirements.txt
+│  └─ com.shay.miccontroller.sdPlugin/
+│     ├─ micController.py
+│     ├─ soloCastHidReader.py
+│     ├─ test_soloCastHidReader.py
+│     └─ README.md
 ├─ streamdeck/
-│  └─ com.shay.dialaudiomixer.sdPlugin/
+│  ├─ com.shay.dialaudiomixer.sdPlugin/
+│  │  ├─ manifest.json
+│  │  ├─ main.js
+│  │  ├─ plugin.html
+│  │  ├─ exclude.json
+│  │  ├─ images/
+│  │  ├─ propertyinspector/
+│  │  └─ README.md
+│  └─ com.shay.miccontroller.sdPlugin/
 │     ├─ manifest.json
 │     ├─ main.js
 │     ├─ plugin.html
 │     ├─ images/
-│     ├─ propertyinspector/
 │     └─ README.md
+├─ update-streamdeck.bat
+├─ update-streamdeck.ps1
 ├─ README.md
-├─ LICENSE
-└─ ...
+└─ LICENSE
 ```
 
-- `server/server.py` がメインサーバーとして各機能モジュールを登録する
-- `server/dialAudioMixer.py` に音声ミキサー機能を置く
-- `server/icon_extractor.py` に共通処理を置く
-- `server/helper.py` は従来の起動方法との互換用エントリーポイント
-- `streamdeck/` には Stream Deck UI / WebSocket / 表示処理を置く
-- 今後の機能追加は、Python 側は `server` に、Stream Deck 側は `streamdeck` に追加していく構成
-
----
+- `server/server.py`
+  - ローカルHTTPサーバー
+  - Flask Blueprintで各プラグインモジュールを登録
+  - 待受ポートは`8823`
+- `server/com.shay.dialaudiomixer.sdPlugin/dialAudioMixer.py`
+  - Dial Audio Mixerの音量制御API
+- `server/com.shay.miccontroller.sdPlugin/micController.py`
+  - Mic ControllerのHTTP APIとSSEイベント
+- `server/com.shay.miccontroller.sdPlugin/soloCastHidReader.py`
+  - SoloCastのHID列挙、監視、WindowsキャプチャEndpoint制御
+- `streamdeck/`
+  - Stream Deckプラグイン本体
 
 ## 動作環境
 
-- Windows 10 / 11
-- Stream Deck 5.0 以上
-- Python 3.8 以上
+- Windows 10/11 x64
+- Stream Deck Software 6.0以上
+- Stream Deck本体と接続済みであること
+- インターネット接続
+- 管理者権限
 
-### Python 依存パッケージ
+セットアップ時にポータブルPythonと以下の依存パッケージを自動で導入します。PCにPythonやVisual Studio C++ Build Toolsを事前にインストールする必要はありません。
 
+- Flask
 - psutil
+- pywin32
 - pycaw
 - comtypes
 - Pillow
-- Flask
-- pywin32
+- hidapi
 
----
+## セットアップ
 
-## インストール方法
+Stream Deck Softwareをインストール済み、Stream Deck本体を接続済み、かつStream Deck Softwareで使用できる状態になっているPCで実行します。
 
-1. このリポジトリをダウンロードまたはクローン
-2. `streamdeck/com.shay.dialaudiomixer.sdPlugin` を Stream Deck のプラグイン格納先に配置
-3. `server` 側で依存ライブラリをインストール
-4. `server/server.py` を起動してローカル API を待機
-5. Stream Deck にプラグインを読み込ませて利用
+1. このリポジトリをダウンロードして任意のフォルダーに展開します。
+2. 展開したフォルダーにある `setup.bat` をダブルクリックします。
+3. 表示された選択画面で、インストールする機能を順番に指定します。
 
----
+   - `Install Mic Controller? (y/n)`：Mic Controllerをインストールするか選択
+   - `Install Dial Audio Mixer? (y/n)`：Dial Audio Mixerをインストールするか選択
 
-## 使い方
+   `y`または`yes`でインストール、`n`または未入力ではインストールしません。
 
-1. Stream Deck 上で「Dial Audio Mixer」アクションを追加
-2. アクションのダイヤルを回すとアクティブなアプリの音量が変更されます
-3. アプリ名と音量がダイヤル上に表示されます
-4. 除外したいアプリはプラグイン設定から追加可能
+4. 管理者権限の確認画面が表示された場合は「はい」を選択します。
+5. インストール完了メッセージを確認します。
 
----
+`setup.bat`は1回実行するだけで、次の処理をまとめて行います。
 
-## 開発用
+- ポータブルPythonの配置
+- Python依存パッケージのインストール
+- 選択したStream Deckプラグインのコピーと登録
+- Stream Deck Softwareの再起動
+- ローカルサーバーの起動
+- Windowsログイン時にサーバーを自動起動する設定
 
-- Stream Deck 側: `streamdeck/com.shay.dialaudiomixer.sdPlugin/`
-- Python サーバー: `server/server.py`
-- アイコン抽出: `server/icon_extractor.py`
+セットアップ後はサーバーを個別に起動する必要はありません。サーバーは `http://127.0.0.1:8823` で待ち受けます。
 
-### 起動
+`Mic Controller`と`Dial Audio Mixer`の選択結果に応じて、導入内容とサーバーの読み込みモジュールが切り替わります。
 
-Python サーバーを手動で起動する場合:
+| 選択 | Stream Deckプラグイン | サーバーで起動するモジュール |
+|---|---|---|
+| Mic=N、Dial=Y | `com.shay.dialaudiomixer.sdPlugin`のみ | Dial Audio Mixerのみ |
+| Mic=Y、Dial=N | `com.shay.miccontroller.sdPlugin`のみ | Mic Controllerのみ |
+| Mic=Y、Dial=Y | 2つのプラグインを両方 | Dial Audio MixerとMic Controller |
+| Mic=N、Dial=N | プラグインなし | 共通APIのみ |
 
-```bash
-cd server
-pip install -r requirements.txt
-python server.py
+インストール済みのプラグインを再実行時に選択解除すると、そのプラグインはStream Deckから削除されます。選択を`N`にした場合、対応するサーバーモジュールもロードされず、そのHID監視スレッドやWindowsオーディオ制御APIも起動しません。
+
+手動確認が必要な場合は、リポジトリのルートにある `start-server.bat` を実行できます。サーバーが正常に起動しているか確認する場合は、ブラウザーまたはPowerShellで次のURLへアクセスします。
+
+```text
+http://127.0.0.1:8823/health
 ```
+
+## Stream Deckプラグインの更新
+
+`update-streamdeck.bat`を実行すると、以下を行います。
+
+1. Stream Deckを停止
+2. `streamdeck/*.sdPlugin`をStream Deckのプラグインフォルダへコピー
+3. Stream Deckを再起動
+
+```powershell
+.\update-streamdeck.bat
+```
+
+更新処理には管理者権限が必要です。UAC確認後、自動的に管理者プロセスへ切り替わります。
+
+## Dial Audio Mixer
+
+Stream Deck上でDial Audio Mixerのアクションを追加します。
+
+- ダイヤル操作: 音量の調整
+- キー操作: ミュート切り替え
+- プロパティインスペクター: 除外アプリなどの設定
+
+サーバー側の音量制御は、`server/com.shay.dialaudiomixer.sdPlugin/dialAudioMixer.py`に実装されています。
+
+## Mic Controller
+
+対象デバイスはHyperX SoloCastです。
