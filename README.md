@@ -20,7 +20,6 @@ StreamDeckPlugin/
 ├─ server/
 │  ├─ server.py
 │  ├─ icon_extractor.py
-│  ├─ requirements.txt
 │  ├─ com.shay.dialaudiomixer.sdPlugin/
 │  │  ├─ dialAudioMixer.py
 │  │  └─ exclude.json
@@ -65,11 +64,13 @@ StreamDeckPlugin/
 
 ## 動作環境
 
-- Windows 10 / 11
+- Windows 10/11 x64
 - Stream Deck Software 6.0以上
-- Python 3.13で動作確認済み
+- Stream Deck本体と接続済みであること
+- インターネット接続
+- 管理者権限
 
-Python依存パッケージ:
+セットアップ時にポータブルPythonと以下の依存パッケージを自動で導入します。PCにPythonやVisual Studio C++ Build Toolsを事前にインストールする必要はありません。
 
 - Flask
 - psutil
@@ -81,19 +82,47 @@ Python依存パッケージ:
 
 ## セットアップ
 
-リポジトリのルートで依存パッケージをインストールします。
+Stream Deck Softwareをインストール済み、Stream Deck本体を接続済み、かつStream Deck Softwareで使用できる状態になっているPCで実行します。
 
-```powershell
-python -m pip install -r server/requirements.txt
+1. このリポジトリをダウンロードして任意のフォルダーに展開します。
+2. 展開したフォルダーにある `setup.bat` をダブルクリックします。
+3. 表示された選択画面で、インストールする機能を順番に指定します。
+
+   - `Install Mic Controller? (y/n)`：Mic Controllerをインストールするか選択
+   - `Install Dial Audio Mixer? (y/n)`：Dial Audio Mixerをインストールするか選択
+
+   `y`または`yes`でインストール、`n`または未入力ではインストールしません。
+
+4. 管理者権限の確認画面が表示された場合は「はい」を選択します。
+5. インストール完了メッセージを確認します。
+
+`setup.bat`は1回実行するだけで、次の処理をまとめて行います。
+
+- ポータブルPythonの配置
+- Python依存パッケージのインストール
+- 選択したStream Deckプラグインのコピーと登録
+- Stream Deck Softwareの再起動
+- ローカルサーバーの起動
+- Windowsログイン時にサーバーを自動起動する設定
+
+セットアップ後はサーバーを個別に起動する必要はありません。サーバーは `http://127.0.0.1:8823` で待ち受けます。
+
+`Mic Controller`と`Dial Audio Mixer`の選択結果に応じて、導入内容とサーバーの読み込みモジュールが切り替わります。
+
+| 選択 | Stream Deckプラグイン | サーバーで起動するモジュール |
+|---|---|---|
+| Mic=N、Dial=Y | `com.shay.dialaudiomixer.sdPlugin`のみ | Dial Audio Mixerのみ |
+| Mic=Y、Dial=N | `com.shay.miccontroller.sdPlugin`のみ | Mic Controllerのみ |
+| Mic=Y、Dial=Y | 2つのプラグインを両方 | Dial Audio MixerとMic Controller |
+| Mic=N、Dial=N | プラグインなし | 共通APIのみ |
+
+インストール済みのプラグインを再実行時に選択解除すると、そのプラグインはStream Deckから削除されます。選択を`N`にした場合、対応するサーバーモジュールもロードされず、そのHID監視スレッドやWindowsオーディオ制御APIも起動しません。
+
+手動確認が必要な場合は、リポジトリのルートにある `start-server.bat` を実行できます。サーバーが正常に起動しているか確認する場合は、ブラウザーまたはPowerShellで次のURLへアクセスします。
+
+```text
+http://127.0.0.1:8823/health
 ```
-
-サーバーを起動します。
-
-```powershell
-python server/server.py
-```
-
-サーバーは`http://127.0.0.1:8823`で待ち受けます。
 
 ## Stream Deckプラグインの更新
 

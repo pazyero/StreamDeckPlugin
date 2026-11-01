@@ -40,21 +40,20 @@ They do not write HID reports to the device.
 
 ## Standalone SoloCast HID reader
 
-Install dependencies, then enumerate the SoloCast HID interfaces:
+セットアップ済みのポータブルPythonを使って、SoloCastのHIDインターフェイスを列挙します。
 
 ```powershell
-python -m pip install -r requirements.txt
-python com.shay.miccontroller.sdPlugin/soloCastHidReader.py --enumerate-only
+.runtime\python\python.exe server\com.shay.miccontroller.sdPlugin\soloCastHidReader.py --enumerate-only
 ```
 
 Briefly probe every `MI_02` collection:
 
 ```powershell
-python com.shay.miccontroller.sdPlugin/soloCastHidReader.py --probe --timeout-ms 300
+.runtime\python\python.exe server\com.shay.miccontroller.sdPlugin\soloCastHidReader.py --probe --timeout-ms 300
 ```
 
 Run the continuous reader:
 
 ```powershell
-python com.shay.miccontroller.sdPlugin/soloCastHidReader.py
+.runtime\python\python.exe server\com.shay.miccontroller.sdPlugin\soloCastHidReader.py
 ```

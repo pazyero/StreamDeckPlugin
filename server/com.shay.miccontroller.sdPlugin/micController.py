@@ -1,7 +1,5 @@
-"""HyperX SoloCast用のマイクミュート制御API。
-
-SoloCastHidMonitorをバックグラウンド監視し、HTTP APIとSSEで現在状態を共有する。
-"""
+# HyperX SoloCast用のマイクミュート制御API。
+# SoloCastHidMonitorをバックグラウンド監視し、HTTP APIとSSEで現在状態を共有する。
 
 import importlib.util
 import atexit
@@ -40,19 +38,19 @@ atexit.register(monitor.stop)
 
 @blueprint.get("/miccontroller/health")
 def health():
-    """サーバーにマイク制御機能が登録されているかを確認する。"""
+# サーバーにマイク制御機能が登録されているかを確認する。
     return jsonify({"status": "ok"})
 
 
 @blueprint.get("/miccontroller/status")
 def get_status():
-    """接続状態、ミュート状態、最終更新日時などのスナップショットを返す。"""
+# 接続状態、ミュート状態、最終更新日時などのスナップショットを返す。
     return jsonify(monitor.snapshot())
 
 
 @blueprint.get("/miccontroller/events")
 def stream_status():
-    """状態変更をServer-Sent Eventsとしてクライアントへ継続配信する。"""
+# 状態変更をServer-Sent Eventsとしてクライアントへ継続配信する。
     subscriber = monitor.subscribe_status()
 
     def event_stream():
@@ -79,7 +77,7 @@ def stream_status():
 
 @blueprint.get("/miccontroller/mute")
 def mute_microphone():
-    """Windows録音エンドポイントをミュート状態へ設定する。"""
+# Windows録音エンドポイントをミュート状態へ設定する。
     result = monitor.set_mute(True)
     status_code = 200 if result["ok"] else 404
     return jsonify(result), status_code
@@ -87,7 +85,7 @@ def mute_microphone():
 
 @blueprint.get("/miccontroller/unmute")
 def unmute_microphone():
-    """Windows録音エンドポイントのミュートを解除する。"""
+# Windows録音エンドポイントのミュートを解除する。
     result = monitor.set_mute(False)
     status_code = 200 if result["ok"] else 404
     return jsonify(result), status_code
@@ -95,7 +93,7 @@ def unmute_microphone():
 
 @blueprint.get("/miccontroller/toggle")
 def toggle_microphone():
-    """現在の録音エンドポイント状態を反転し、クライアント向け形式で返す。"""
+# 現在の録音エンドポイント状態を反転し、クライアント向け形式で返す。
     try:
         result = monitor.toggle_mute()
     except Exception as error:
@@ -107,7 +105,7 @@ def toggle_microphone():
             "message": f"Toggle failed: {error}",
         }
     try:
-        status_code = 200
+        status_code = 200 if result["ok"] else 503
         public_result = {
             "status": "ok" if result["ok"] else "error",
             "ok": bool(result["ok"]),
@@ -140,6 +138,6 @@ def toggle_microphone():
 
 
 def register(app):
-    """BlueprintをFlaskへ登録し、HID監視スレッドを開始する。"""
+# BlueprintをFlaskへ登録し、HID監視スレッドを開始する。
     app.register_blueprint(blueprint)
     monitor.start()

@@ -13,9 +13,6 @@ let actionContext = null;
 let title = "(No Audio Apps)";
 // 設定保持用
 let settings = {};
-// setFeedback用画像やアイコンを生成する際に参照するCanvas画像パス。
-const timeoutId = setTimeout(() => controller.abort(), 500); // フェッチ処理のタイムアウト予約
-
 const muteOverlaySrc = "./images/mute_overlay.png"; // 144x144, 透明背景
 
 
@@ -236,14 +233,15 @@ function adjustMute() {
   if (!app) return;
 
  sendDebug(app.mute);
-  mute = ! app.mute;
+  const mute = !app.mute;
   sendDebug('adjustVolume: local vol=' + app.volume.toFixed(2) + `, name=${app.name}&mute=${mute}`);
 
   app.mute = mute
   updateDialTitle();
 
-  fetch(`http://127.0.0.1:8823/mute_set?name=${app.name}&mute=${mute}`).catch(() => {})
-  .finally(() => clearTimeout(timeoutId));
+  fetch(`http://127.0.0.1:8823/mute_set?name=${encodeURIComponent(app.name)}&mute=${mute}`).catch((e) => {
+    sendDebug('mute_set error: ' + String(e));
+  });
 }
 
 
@@ -264,8 +262,9 @@ function adjustVolume(ticks) {
   app.volume= volume
   updateVolumeDisplay();
 
-  fetch(`http://127.0.0.1:8823/volume_set?name=${app.name}&vol=${volume}`).catch(() => {})
-  .finally(() => clearTimeout(timeoutId));;
+  fetch(`http://127.0.0.1:8823/volume_set?name=${encodeURIComponent(app.name)}&vol=${volume}`).catch((e) => {
+    sendDebug('volume_set error: ' + String(e));
+  });
 }
 
 // =======================
@@ -296,8 +295,7 @@ function fetchApps() {
 
       updateDialTitle();
     })
-    .catch(err => { sendDebug('fetchApps error: ' + String(err)); })
-    .finally(() => clearTimeout(timeoutId));;
+    .catch(err => { sendDebug('fetchApps error: ' + String(err)); });
 }
 
 // =======================

@@ -1,6 +1,4 @@
 import unittest
-import io
-from contextlib import redirect_stdout
 from unittest.mock import patch
 
 from soloCastHidReader import (
@@ -13,7 +11,7 @@ from soloCastHidReader import (
 
 
 class SoloCastHidReaderTests(unittest.TestCase):
-    """HIDレポート解析、デバイス選択、ミュート同期の回帰テスト。"""
+    # HIDレポート解析、デバイス選択、ミュート同期の回帰テスト。
     def test_monitor_initial_snapshot(self):
         monitor = SoloCastHidMonitor()
         snapshot = monitor.snapshot()
@@ -22,19 +20,21 @@ class SoloCastHidReaderTests(unittest.TestCase):
         self.assertEqual(snapshot["vid"], 0x03F0)
         self.assertEqual(snapshot["pid"], 0x078B)
 
-    def test_monitor_prints_mute_state_changes(self):
+    def test_monitor_logs_mute_state_changes(self):
         monitor = SoloCastHidMonitor()
 
-        output = io.StringIO()
-        with redirect_stdout(output):
+        with patch("soloCastHidReader.log_output") as log_output:
             monitor._set_status(state=False)
             monitor._set_status(state=True)
             monitor._set_status(state=True)
 
-        lines = output.getvalue().splitlines()
-        self.assertEqual(len(lines), 2)
-        self.assertIn("UNMUTE", lines[0])
-        self.assertIn("MUTE", lines[1])
+        messages = [
+            call.args[0]
+            for call in log_output.call_args_list
+        ]
+        self.assertEqual(len(messages), 2)
+        self.assertIn("UNMUTE", messages[0])
+        self.assertIn("MUTE", messages[1])
 
     def test_monitor_sets_endpoint_mute(self):
         monitor = SoloCastHidMonitor()

@@ -12,18 +12,12 @@
 
 Python サーバーは別フォルダ `../server` に分離しています。
 
-セットアップ (簡易):
+セットアップ:
 
-1. Python 依存のインストール:
-
-   cd ../server
-   pip install -r requirements.txt
-
-2. サーバーを起動:
-
-   python server.py
-
-3. このプラグインフォルダを Stream Deck に配置するか、開発環境で WebSocket と接続します。
+リポジトリのルートにある `setup.bat` を実行してください。
+ポータブルPython、Python依存ライブラリ、サーバー、選択したStream Deckプラグインを
+まとめてセットアップします。PythonやVisual Studio C++ Build Toolsを個別に
+インストールする必要はありません。
 
 注意:
 

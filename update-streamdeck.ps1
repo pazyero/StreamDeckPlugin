@@ -1,17 +1,26 @@
+# Stream Deck用プラグインを選択してインストール・更新するスクリプト。
 [CmdletBinding()]
 param(
     [switch]$StartStreamDeck,
-    [string]$Elevated = ""
+    [string]$Elevated = "",
+    [switch]$InstallDial,
+    [switch]$InstallMic,
+    [switch]$NoSelection
 )
 
+# エラーを例外として扱い、スクリプト配下のパスにアクセスする。
 $ErrorActionPreference = "Stop"
 
+# 現在の権限を確認し、管理者権限がない場合はUAC経由で再実行する。
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = New-Object Security.Principal.WindowsPrincipal($identity)
 $isAdministrator = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
 if (-not $isAdministrator -and $Elevated -ne "1") {
     $arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -StartStreamDeck -Elevated 1"
+    if ($InstallDial) { $arguments += " -InstallDial" }
+    if ($InstallMic) { $arguments += " -InstallMic" }
+    if ($NoSelection) { $arguments += " -NoSelection" }
     $launcherProcess = Start-Process `
         -FilePath "powershell.exe" `
         -ArgumentList $arguments `
@@ -31,6 +40,7 @@ if (-not $isAdministrator -and $Elevated -ne "1") {
     exit $launcherProcess.ExitCode
 }
 
+# リポジトリのソースとStream Deckユーザープラグインフォルダーを特定する。
 $RepositoryRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $SourcePluginRoot = Join-Path $RepositoryRoot "streamdeck"
 $PluginRoot = Join-Path $env:APPDATA "Elgato\StreamDeck\Plugins"
@@ -40,13 +50,29 @@ if (-not (Test-Path -LiteralPath $SourcePluginRoot)) {
     throw "Stream Deck source folder not found: $SourcePluginRoot"
 }
 
+# 引数で選択されたプラグインだけをコピー対象に絞り込む。
 $sourcePlugins = @(Get-ChildItem -LiteralPath $SourcePluginRoot -Directory |
     Where-Object { $_.Name -like "*.sdPlugin" })
 
-if ($sourcePlugins.Count -eq 0) {
-    throw "No *.sdPlugin folders found under: $SourcePluginRoot"
+$selectionWasSpecified = $InstallDial -or $InstallMic -or $NoSelection
+if (-not $selectionWasSpecified) {
+    # 選択引数がない既存呼び出し向けに、互換性として両プラグインを選択する。
+    $InstallDial = $true
+    $InstallMic = $true
 }
 
+$sourcePlugins = @($sourcePlugins | Where-Object {
+    ($InstallDial -and $_.Name -eq "com.shay.dialaudiomixer.sdPlugin") -or
+    ($InstallMic -and $_.Name -eq "com.shay.miccontroller.sdPlugin")
+})
+
+if ($sourcePlugins.Count -eq 0) {
+    if (-not $NoSelection) {
+        throw "No *.sdPlugin folders found under: $SourcePluginRoot"
+    }
+}
+
+# コピー前に実行中のStream Deck Softwareを停止し、プラグイン更新中の競合を防ぐ。
 $runningProcesses = @(Get-Process -Name "StreamDeck" -ErrorAction SilentlyContinue)
 
 foreach ($process in $runningProcesses) {
@@ -67,8 +93,25 @@ if ($runningProcesses.Count -gt 0) {
     }
 }
 
+# Stream Deckのユーザープラグインフォルダーを作成し、インストール先へ追加する。
 New-Item -ItemType Directory -Force -Path $PluginRoot | Out-Null
 
+# 選択されなかった既存プラグインは削除し、選択結果とインストール状態を一致させる。
+$knownPluginNames = @(
+    "com.shay.dialaudiomixer.sdPlugin",
+    "com.shay.miccontroller.sdPlugin"
+)
+foreach ($knownPluginName in $knownPluginNames) {
+    $destinationPlugin = Join-Path $PluginRoot $knownPluginName
+    $shouldInstall = ($knownPluginName -eq "com.shay.dialaudiomixer.sdPlugin" -and $InstallDial) -or
+                     ($knownPluginName -eq "com.shay.miccontroller.sdPlugin" -and $InstallMic)
+    if (-not $shouldInstall -and (Test-Path -LiteralPath $destinationPlugin)) {
+        Remove-Item -LiteralPath $destinationPlugin -Recurse -Force
+        Write-Host "Removed unselected plugin: $knownPluginName"
+    }
+}
+
+# robocopyで各プラグインを完全同期し、更新や不要ファイル削除も反映する。
 foreach ($sourcePlugin in $sourcePlugins) {
     $destinationPlugin = Join-Path $PluginRoot $sourcePlugin.Name
     New-Item -ItemType Directory -Force -Path $destinationPlugin | Out-Null
@@ -81,6 +124,7 @@ foreach ($sourcePlugin in $sourcePlugins) {
     Write-Host "$($sourcePlugin.Name) installed or updated at: $destinationPlugin"
 }
 
+# インストール時または更新時にStream Deck Softwareを再起動する。
 if ($StartStreamDeck -or $runningProcesses.Count -gt 0) {
     if (-not (Test-Path -LiteralPath $StreamDeckExecutable)) {
         throw "Stream Deck executable not found: $StreamDeckExecutable"
