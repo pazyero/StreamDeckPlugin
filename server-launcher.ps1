@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 
 # リポジトリ内のポータブルPythonとserver.pyへのパスを組み立てる。
 $RepositoryRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$PythonExe = Join-Path $RepositoryRoot ".runtime\python\python.exe"
+$PythonExe = Join-Path $RepositoryRoot ".runtime\python\pythonw.exe"
 $ServerScript = Join-Path $RepositoryRoot "server\server.py"
 
 # セットアップ前に実行された場合は、setup.batを先に実行するよう案内して終了する。
