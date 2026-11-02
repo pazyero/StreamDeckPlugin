@@ -17,7 +17,7 @@ SERVER_ROOT = Path(__file__).resolve().parent.parent
 if str(SERVER_ROOT) not in sys.path:
     sys.path.insert(0, str(SERVER_ROOT))
 
-from common_logging import log_output
+from common_logging import *
 
 # pycawが利用できない環境でもサーバー自体は起動できるよう、利用可否を判定する。
 try:
@@ -46,11 +46,7 @@ def com_apartment():
             try:
                 comtypes.CoUninitialize()
             except Exception as error:
-                log_output(
-                    f"COM uninitialization failed: {error}",
-                    "error",
-                    logger_name="dialAudioMixer",
-                )
+                error_log(f"COM uninitialization failed: {error}")
 
 # Flaskの各エンドポイントをcommon server.pyへ登録するためのBlueprint。
 blueprint = Blueprint("dialAudioMixer", __name__)
@@ -65,7 +61,7 @@ if not os.path.exists(EXCLUDE_FILE):
         with open(EXCLUDE_FILE, "w", encoding="utf-8") as f:
             json.dump([], f)
     except Exception as e:
-        log_output(f"failed to create exclude file: {e}", "error", logger_name="dialAudioMixer")
+        error_log(f"failed to create exclude file: {e}")
 
 # =======================
 # 除外リスト読み込み/保存
@@ -124,17 +120,14 @@ def list_audio_apps():
                                 current_mute = False
 
                             final_volume = min(1.0, max(0.0, current_volume))
-                            log_output(
-                                f"pid={session.Process.pid}, name={name}, vol={final_volume}, mute={current_mute}",
-                                logger_name="dialAudioMixer",
-                            )
+                            debug_log(f"pid={session.Process.pid}, name={name}, vol={final_volume}, mute={current_mute}")
                             if name not in excluded and name not in seen_names:
                                 result.append({"pid": session.Process.pid, "mute": current_mute, "name": name, "volume": final_volume})
                                 seen_names.add(name)
                         except Exception:
                             pass
                 except Exception as e:
-                    log_output(f"ERROR: {e}", "error", logger_name="dialAudioMixer")
+                    error_log(f"ERROR: {e}")
             else:
                 # pycawが利用できない場合は全プロセスを返す（重複除去）
                 for p in psutil.process_iter(["pid", "name"]):
@@ -148,7 +141,7 @@ def list_audio_apps():
                         })
                         seen_names.add(name)
     except RuntimeError as e:
-        log_output(str(e), "error", logger_name="dialAudioMixer")
+        error_log(str(e))
         return jsonify({"status": "error", "message": str(e)}), 503
     return jsonify(result)
 
@@ -211,8 +204,9 @@ def set_mute_absolute():
                 if name == name_arg:
                     volctl = ctl.QueryInterface(ISimpleAudioVolume)
                     volctl.SetMute(mute, None)
+                    info_log(f"Set mute={mute} for {name_arg} (pid={session.Process.pid})")
     except Exception as e:
-        log_output(f"mute_set COM error: {e}", "error", logger_name="dialAudioMixer")
+        error_log(f"mute_set COM error: {e}")
         return jsonify({"status": "error", "message": "Windows audio session is temporarily unavailable"}), 503
 
     return jsonify({"status": "ok", "mute": mute})
@@ -246,8 +240,9 @@ def set_volume_absolute():
                 if name == name_arg:
                     volctl = ctl.QueryInterface(ISimpleAudioVolume)
                     volctl.SetMasterVolume(vol, None)
+                    info_log(f"Set volume={vol} for {name_arg} (pid={session.Process.pid})")
     except Exception as e:
-        log_output(f"volume_set COM error: {e}", "error", logger_name="dialAudioMixer")
+        error_log(f"volume_set COM error: {e}")
         return jsonify({"status": "error", "message": "Windows audio session is temporarily unavailable"}), 503
 
     return jsonify({"status": "ok", "volume": vol})
@@ -260,9 +255,9 @@ def receive_log():
     # main.jsから送られるデバッグログをサーバーコンソールへ出力する。
     m = request.args.get("m")
     try:
-        log_output(f"{m}", "debug", logger_name="dialAudioMixer")
+        debug_log(f"{m}")
     except Exception:
-        log_output("<unprintable message>", "error", logger_name="dialAudioMixer")
+        error_log("<unprintable message>")
     return jsonify({"status": "ok"})
 
 # =======================
@@ -283,7 +278,7 @@ def get_icon():
         p = psutil.Process(pid)
         exe_path = p.exe()
     except Exception as e:
-        log_output(f"process lookup error: {e}", "error", logger_name="dialAudioMixer")
+        error_log(f"process lookup error: {e}")
         return jsonify({"status": "error", "message": "process not found"}), 404
 
     tmp = None
@@ -303,7 +298,7 @@ def get_icon():
         except Exception: pass
         return jsonify({"status": "ok", "data_url": data_url})
     except Exception as e:
-        log_output(f"ERROR: {e}", "error", logger_name="dialAudioMixer")
+        error_log(f"ERROR: {e}")
         if tmp:
             try: os.remove(tmp.name)
             except Exception: pass

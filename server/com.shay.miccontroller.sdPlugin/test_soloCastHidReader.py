@@ -1,8 +1,12 @@
+import sys
+import types
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
+import soloCastHidReader as reader
 from soloCastHidReader import (
     SoloCastHidMonitor,
+    com_apartment,
     format_hex,
     is_mi_02_path,
     parse_mute_state,
@@ -12,6 +16,27 @@ from soloCastHidReader import (
 
 class SoloCastHidReaderTests(unittest.TestCase):
     # HIDレポート解析、デバイス選択、ミュート同期の回帰テスト。
+    def test_com_apartment_caches_capture_devices(self):
+        devices = [object()]
+        comtypes = types.ModuleType("comtypes")
+        comtypes.CoInitialize = Mock()
+        comtypes.CoUninitialize = Mock()
+
+        with patch.dict(sys.modules, {"comtypes": comtypes}):
+            with patch.object(reader, "_CAPTURE_DEVICES_CACHE", reader._UNSET):
+                with patch.object(
+                    reader.AudioUtilities,
+                    "GetAllDevices",
+                    return_value=devices,
+                ) as get_all_devices:
+                    with com_apartment() as first_devices:
+                        with com_apartment() as second_devices:
+                            pass
+
+        self.assertIs(first_devices, devices)
+        self.assertIs(second_devices, devices)
+        get_all_devices.assert_called_once_with(data_flow=1)
+
     def test_monitor_initial_snapshot(self):
         monitor = SoloCastHidMonitor()
         snapshot = monitor.snapshot()

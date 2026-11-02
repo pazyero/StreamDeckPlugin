@@ -1,10 +1,8 @@
-import sys
 import win32ui
 import win32gui
 import win32con
-import win32api
 from PIL import Image
-from common_logging import log_output
+from common_logging import *
 
 def extract_icon(exe_path, output_png):
 # 指定した実行ファイルからアイコンを抽出してPNGとして保存する関数。
@@ -103,11 +101,7 @@ def extract_icon(exe_path, output_png):
 
     if img is None:
         # 全て失敗
-        log_output(
-            f"画像作成失敗, 試行エラー: {errors}",
-            "error",
-            logger_name="icon_extractor",
-        )
+        error_log(f"画像作成失敗, 試行エラー: {errors}", logger_name="icon_extractor")
         try:
             win32gui.DestroyIcon(hicon)
         except Exception:

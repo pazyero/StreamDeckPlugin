@@ -167,6 +167,7 @@ $installMic = $Plugins -eq "Mic" -or $Plugins -eq "Both"
 @{
     dial = $installDial
     mic = $installMic
+    logging_level = "INFO"
 } | ConvertTo-Json -Depth 3 |
     Set-Content -LiteralPath (Join-Path $ServerRoot "installed_plugins.json") -Encoding UTF8
 

@@ -18,15 +18,13 @@ SERVER_ROOT = Path(__file__).resolve().parent
 if str(SERVER_ROOT) not in sys.path:
     sys.path.insert(0, str(SERVER_ROOT))
 
+from common_logging import set_logging_level
+
 
 # 機能モジュール一覧。各モジュールはregister(app)を提供する必要がある。
 MODULES = (
-    SERVER_ROOT
-    / "com.shay.dialaudiomixer.sdPlugin"
-    / "dialAudioMixer.py",
-    SERVER_ROOT
-    / "com.shay.miccontroller.sdPlugin"
-    / "micController.py",
+    SERVER_ROOT/"com.shay.dialaudiomixer.sdPlugin/dialAudioMixer.py",
+    SERVER_ROOT/"com.shay.miccontroller.sdPlugin/micController.py",
 )
 
 # setup.ps1がインストール対象をこのファイルへ保存し、
@@ -34,23 +32,29 @@ MODULES = (
 # 設定ファイルがない旧環境では、互換性のため両方を有効として扱う。
 PLUGIN_CONFIG = SERVER_ROOT / "installed_plugins.json"
 ENABLED_MODULES = {"dial": True, "mic": True}
+LOGGING_LEVEL = "INFO"
 if PLUGIN_CONFIG.exists():
     try:
-        configured = json.loads(PLUGIN_CONFIG.read_text(encoding="utf-8"))
+        configured = json.loads(PLUGIN_CONFIG.read_text(encoding="utf-8-sig"))
         if isinstance(configured, dict):
             for module_name in ("dial", "mic"):
                 value = configured.get(module_name, True)
                 ENABLED_MODULES[module_name] = value if isinstance(value, bool) else True
+
+            logging_level = configured.get("logging_level", "INFO")
+            if isinstance(logging_level, str) or isinstance(logging_level, int):
+                LOGGING_LEVEL = logging_level
         else:
             print("[Server] plugin configuration must contain a JSON object; defaults are used.")
     except Exception as error:
         print(f"[Server] プラグイン設定を読み込めませんでした: {error}")
 
+set_logging_level(LOGGING_LEVEL)
+
 ACTIVE_MODULES = (
     MODULES[0] if ENABLED_MODULES["dial"] else None,
     MODULES[1] if ENABLED_MODULES["mic"] else None,
 )
-
 
 def create_app():
 # Flaskアプリを生成し、共通例外処理と機能モジュールを登録する。
@@ -58,63 +62,48 @@ def create_app():
 
     @app.get("/health")
     def server_health():
-        return jsonify({
-            "status": "ok",
-            "dial": ENABLED_MODULES["dial"],
-            "mic": ENABLED_MODULES["mic"],
-        })
+        return jsonify({"status": "ok","dial": ENABLED_MODULES["dial"],"mic": ENABLED_MODULES["mic"],})
 
     logging.getLogger("werkzeug").setLevel(logging.ERROR)
     app.logger.disabled = True
 
     @app.errorhandler(Exception)
     def handle_unexpected_error(error):
-# 未処理例外をサーバーログへ記録し、クライアントへは内部情報を公開しない。
+    # 未処理例外をサーバーログへ記録し、クライアントへは内部情報を公開しない。
         if isinstance(error, HTTPException):
-            return jsonify({
-                "status": "error",
-                "ok": False,
-                "message": error.description,
-            }), error.code
+            return jsonify({"status": "error","ok": False,"message": error.description, }), error.code
         print("[Server] Unexpected exception:")
         traceback.print_exc()
-        return jsonify({
-            "status": "error",
-            "ok": False,
-            "message": "Server error",
-        }), 500
+        return jsonify({"status": "error","ok": False,"message": "Server error",}), 500
 
     for module_name in ACTIVE_MODULES:
         if module_name is None:
             continue
+
         # モジュールをファイル名から動的ロードし、提供されるregister関数でBlueprintを登録する。
         module_name = Path(module_name)
         module_id = module_name.stem
         spec = importlib.util.spec_from_file_location(module_id, module_name)
+
         if spec is None or spec.loader is None:
             raise RuntimeError(f"cannot load module: {module_name}")
+
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         register = getattr(module, "register", None)
         if not callable(register):
-            raise RuntimeError(
-                f"{module_name}.py must provide a register(app) function"
-            )
+            raise RuntimeError(f"{module_name}.py must provide a register(app) function")
+
         register(app)
 
     return app
 
-
 app = create_app()
 
-
 if __name__ == "__main__":
-    try:
-        app.run(
-            host="127.0.0.1",
-            port=8823,
-            threaded=True,
-            use_reloader=False,
-        )
-    except KeyboardInterrupt:
-        print("\nServer stopped.")
+    app.run(
+        host="127.0.0.1",
+        port=8823,
+        threaded=True,
+        use_reloader=False,
+    )
