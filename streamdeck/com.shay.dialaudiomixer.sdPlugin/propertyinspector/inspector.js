@@ -2,11 +2,12 @@
 const list = document.getElementById("appList");
 const excludedList = document.getElementById("excludedList");
 const refreshBtn = document.getElementById("refresh");
+const API_BASE = "http://127.0.0.1:8823";
 
 async function loadApps() {
   // 現在の音量セッション一覧を取得し、除外ボタン付きで再描画する。
   try {
-    const r = await fetch("http://127.0.0.1:8823/apps");
+    const r = await fetch(API_BASE + "/dialAudioMixer/apps");
     const apps = await r.json();
     list.innerHTML = "";
     for (const a of apps) {
@@ -24,7 +25,7 @@ async function loadApps() {
 async function loadExcluded() {
   // 除外済みアプリ一覧を取得し、解除ボタン付きで再描画する。
   try {
-    const r = await fetch("http://127.0.0.1:8823/excluded");
+    const r = await fetch(API_BASE + "/dialAudioMixer/excluded");
     const items = await r.json();
     excludedList.innerHTML = "";
     for (const name of items) {
@@ -50,7 +51,7 @@ list.onclick = async (e) => {
   // 表示中アプリの除外ボタンからアプリ名を取得し、一覧へ反映する。
   if (e.target.tagName === "BUTTON") {
     const name = e.target.dataset.name;
-    await fetch(`http://127.0.0.1:8823/exclude?name=${name}`);
+    await fetch(API_BASE + "/dialAudioMixer/exclude?name=" + encodeURIComponent(name));
     await loadApps();
     await loadExcluded();
   }
@@ -60,7 +61,7 @@ excludedList.onclick = async (e) => {
   // 除外解除ボタンで指定アプリを解除し、両方の一覧へ変更を反映する。
   if (e.target.tagName === "BUTTON") {
     const name = e.target.dataset.name;
-    await fetch(`http://127.0.0.1:8823/unexclude?name=${name}`);
+    await fetch(API_BASE + "/dialAudioMixer/unexclude?name=" + encodeURIComponent(name));
     await loadExcluded();
     await loadApps();
   }

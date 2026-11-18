@@ -35,13 +35,6 @@ monitor = SOLO_CAST_READER.SoloCastHidMonitor()
 # プロセス終了時に監視スレッドとHIDデバイスを確実に停止する。
 atexit.register(monitor.stop)
 
-
-@blueprint.get("/miccontroller/health")
-def health():
-# サーバーにマイク制御機能が登録されているかを確認する。
-    return jsonify({"status": "ok"})
-
-
 @blueprint.get("/miccontroller/status")
 def get_status():
 # 接続状態、ミュート状態、最終更新日時などのスナップショットを返す。

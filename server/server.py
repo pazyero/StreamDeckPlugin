@@ -18,7 +18,7 @@ SERVER_ROOT = Path(__file__).resolve().parent
 if str(SERVER_ROOT) not in sys.path:
     sys.path.insert(0, str(SERVER_ROOT))
 
-from common_logging import set_logging_level
+from common_logging import set_logging_level, debug_log
 
 
 # 機能モジュール一覧。各モジュールはregister(app)を提供する必要がある。
@@ -59,6 +59,14 @@ ACTIVE_MODULES = (
 def create_app():
 # Flaskアプリを生成し、共通例外処理と機能モジュールを登録する。
     app = Flask(__name__)
+
+    @app.get("/log")
+    def receive_streamdeck_log():
+    # Stream Deck JavaScriptから送られたデバッグログを共通ログへ記録する。
+        from flask import request
+        message = request.args.get("m", "")
+        debug_log(message, logger_name="StreamDeck")
+        return jsonify({"status": "ok"})
 
     @app.get("/health")
     def server_health():

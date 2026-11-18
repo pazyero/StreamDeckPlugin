@@ -74,4 +74,3 @@ def critical_log(message: object = "", *, logger_name: str = None, exc_info: boo
     configure_logging()
     logger = logging.getLogger(logger_name if logger_name is not None else infer_logger_name())
     getattr(logger, "critical")(str(message), exc_info=exc_info)
-

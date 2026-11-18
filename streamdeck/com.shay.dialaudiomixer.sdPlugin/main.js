@@ -14,6 +14,7 @@ let title = "(No Audio Apps)";
 // 設定保持用
 let settings = {};
 const muteOverlaySrc = "./images/mute_overlay.png"; // 144x144, 透明背景
+const API_BASE = "http://127.0.0.1:8823";
 
 
 // =======================
@@ -32,7 +33,7 @@ function connectElgatoStreamDeckSocket(inPort, inUUID, inRegisterEvent, inInfo) 
 // =======================
 function sendDebug(msg) {
   try {
-    fetch('http://127.0.0.1:8823/_log?m=' + encodeURIComponent(String(msg))).catch(() => {});
+    fetch(API_BASE + "/log?m=" + encodeURIComponent(String(msg))).catch(() => {});
   } catch (e) {}
 }
 
@@ -132,7 +133,7 @@ const iconCache = {};
 async function fetchIconForApp(pid, name) {
   if (iconCache[name]){return iconCache[name];}
   try {
-    const res = await fetch(`http://127.0.0.1:8823/icon?pid=${pid}`);
+    const res = await fetch( API_BASE + "/dialAudioMixer/icon?pid=" + pid);
     if (!res.ok) throw new Error('no icon');
     const j = await res.json();
     if (j && j.data_url) {
@@ -239,7 +240,7 @@ function adjustMute() {
   app.mute = mute
   updateDialTitle();
 
-  fetch(`http://127.0.0.1:8823/mute_set?name=${encodeURIComponent(app.name)}&mute=${mute}`).catch((e) => {
+  fetch(API_BASE + "/dialAudioMixer/mute_set?name=" + encodeURIComponent(app.name) + "&mute=" + mute).catch((e) => {
     sendDebug('mute_set error: ' + String(e));
   });
 }
@@ -262,7 +263,7 @@ function adjustVolume(ticks) {
   app.volume= volume
   updateVolumeDisplay();
 
-  fetch(`http://127.0.0.1:8823/volume_set?name=${encodeURIComponent(app.name)}&vol=${volume}`).catch((e) => {
+  fetch(API_BASE + "/dialAudioMixer/volume_set?name=" + encodeURIComponent(app.name) + "&vol=" + volume).catch((e) => {
     sendDebug('volume_set error: ' + String(e));
   });
 }
@@ -272,7 +273,7 @@ function adjustVolume(ticks) {
 // =======================
 function fetchApps() {
   // サーバーからアプリ一覧を取得し、既存選択位置を維持しながら最新状態へ更新する。
-  fetch('http://127.0.0.1:8823/apps')
+  fetch(API_BASE + "/dialAudioMixer/apps")
     .then(res => res.json())
     .then(list => {
       if (!Array.isArray(list)) return;

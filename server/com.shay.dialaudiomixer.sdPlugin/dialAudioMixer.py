@@ -5,7 +5,6 @@
 import psutil
 import json
 from flask import Blueprint, request, jsonify
-from icon_extractor import extract_icon
 import os
 import base64
 import tempfile
@@ -17,7 +16,14 @@ SERVER_ROOT = Path(__file__).resolve().parent.parent
 if str(SERVER_ROOT) not in sys.path:
     sys.path.insert(0, str(SERVER_ROOT))
 
+
 from common_logging import *
+
+PLUGIN_ROOT = Path(__file__).resolve().parent
+if str(PLUGIN_ROOT) not in sys.path:
+    sys.path.insert(0, str(PLUGIN_ROOT))
+
+from icon_extractor import extract_icon
 
 # pycawが利用できない環境でもサーバー自体は起動できるよう、利用可否を判定する。
 try:
@@ -80,7 +86,7 @@ def save_excluded(lst):
 # =======================
 # /excluded : 除外リストの取得
 # =======================
-@blueprint.get("/excluded")
+@blueprint.get("/dialAudioMixer/excluded")
 def get_excluded():
 # 除外リストをRESTクライアントへ返す。
     try:
@@ -91,7 +97,7 @@ def get_excluded():
 # =======================
 # /apps : 音声セッションのあるアプリ一覧取得
 # =======================
-@blueprint.get("/apps")
+@blueprint.get("/dialAudioMixer/apps")
 def list_audio_apps():
     # アクティブな音声セッションをアプリ名ごとに集約して返す。
     excluded = load_excluded()
@@ -149,7 +155,7 @@ def list_audio_apps():
 # =======================
 # /exclude : アプリ名を除外リストに追加
 # =======================
-@blueprint.get("/exclude")
+@blueprint.get("/dialAudioMixer/exclude")
 def add_exclude():
     # 指定アプリを除外リストへ追加する。重複登録は行わない。
     name = request.args.get("name")
@@ -164,7 +170,7 @@ def add_exclude():
 # =======================
 # /unexclude : アプリ名を除外リストから削除
 # =======================
-@blueprint.get("/unexclude")
+@blueprint.get("/dialAudioMixer/unexclude")
 def remove_exclude():
     # 指定アプリを除外リストから削除する。
     name = request.args.get("name")
@@ -180,7 +186,7 @@ def remove_exclude():
 # =======================
 # /mute : ミュート設定・解除
 # =======================
-@blueprint.get("/mute_set")
+@blueprint.get("/dialAudioMixer/mute_set")
 def set_mute_absolute():
     # 同名の全プロセスセッションへミュート状態を一括設定する。
     if not PYCAW_AVAILABLE:
@@ -215,7 +221,7 @@ def set_mute_absolute():
 # =======================
 # /volume_set : 絶対値で音量設定
 # =======================
-@blueprint.get("/volume_set")
+@blueprint.get("/dialAudioMixer/volume_set")
 def set_volume_absolute():
     # 同名の全プロセスセッションへ0.0～1.0の絶対音量を設定する。
     if not PYCAW_AVAILABLE:
@@ -248,22 +254,9 @@ def set_volume_absolute():
     return jsonify({"status": "ok", "volume": vol})
 
 # =======================
-# /_log : デバッグログ受信
-# =======================
-@blueprint.get("/_log")
-def receive_log():
-    # main.jsから送られるデバッグログをサーバーコンソールへ出力する。
-    m = request.args.get("m")
-    try:
-        debug_log(f"{m}")
-    except Exception:
-        error_log("<unprintable message>")
-    return jsonify({"status": "ok"})
-
-# =======================
 # /icon : プロセスのアイコン取得
 # =======================
-@blueprint.get("/icon")
+@blueprint.get("/dialAudioMixer/icon")
 def get_icon():
     # 実行中プロセスのEXEからアイコンを抽出し、ブラウザ表示用PNGへ変換する。
     pid_arg = request.args.get('pid')
