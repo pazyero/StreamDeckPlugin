@@ -17,6 +17,7 @@ $RepositoryRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RuntimeRoot = Join-Path $RepositoryRoot ".runtime"
 $PythonRoot = Join-Path $RuntimeRoot "python"
 $PythonExe = Join-Path $PythonRoot "python.exe"
+$PythonwExe = Join-Path $PythonRoot "pythonw.exe"
 $ServerRoot = Join-Path $RepositoryRoot "server"
 
 # 再実行時は既存サーバーを停止し、古いモジュール設定やライブラリ読み込みを残さない。
@@ -26,7 +27,7 @@ try {
         try {
             $processId = $listener.OwningProcess
             $process = Get-Process -Id $processId -ErrorAction Stop
-            $expectedPython = [System.IO.Path]::GetFullPath($PythonExe).ToLowerInvariant()
+            $expectedPython = [System.IO.Path]::GetFullPath($PythonwExe).ToLowerInvariant()
             $actualProcessPath = if ($process.Path) {
                 [System.IO.Path]::GetFullPath($process.Path).ToLowerInvariant()
             } else {

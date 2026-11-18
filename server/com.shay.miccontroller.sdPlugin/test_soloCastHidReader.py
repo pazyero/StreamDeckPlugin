@@ -48,14 +48,14 @@ class SoloCastHidReaderTests(unittest.TestCase):
     def test_monitor_logs_mute_state_changes(self):
         monitor = SoloCastHidMonitor()
 
-        with patch("soloCastHidReader.log_output") as log_output:
+        with patch("soloCastHidReader.info_log") as info_log:
             monitor._set_status(state=False)
             monitor._set_status(state=True)
             monitor._set_status(state=True)
 
         messages = [
             call.args[0]
-            for call in log_output.call_args_list
+            for call in info_log.call_args_list
         ]
         self.assertEqual(len(messages), 2)
         self.assertIn("UNMUTE", messages[0])
@@ -99,6 +99,21 @@ class SoloCastHidReaderTests(unittest.TestCase):
 
         self.assertTrue(result["ok"])
         self.assertTrue(result["muted"])
+        self.assertTrue(monitor.snapshot()["muted"])
+
+    def test_toggle_uses_endpoint_state_when_hid_state_differs(self):
+        monitor = SoloCastHidMonitor()
+        monitor._set_status(state=True)
+        with patch.object(monitor, "_get_endpoint_mute", return_value=False):
+            with patch.object(
+                monitor,
+                "_set_endpoint_mute",
+                return_value={"ok": True, "muted": True},
+            ) as set_endpoint:
+                result = monitor.toggle_mute()
+
+        self.assertTrue(result["ok"])
+        set_endpoint.assert_called_once_with(True)
         self.assertTrue(monitor.snapshot()["muted"])
 
     def test_toggle_unmutes_opposite_state_once(self):

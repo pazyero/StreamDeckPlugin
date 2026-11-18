@@ -9,16 +9,24 @@ async function loadApps() {
   try {
     const r = await fetch(API_BASE + "/dialAudioMixer/apps");
     const apps = await r.json();
-    list.innerHTML = "";
+    list.textContent = "";
     for (const a of apps) {
       const li = document.createElement("li");
       const volume = Math.round(a.volume * 100);
-      li.innerHTML = `${a.name} - <span id="vol-${a.name}">` +  volume + '%' + `</span> <button data-name="${a.name}">Exclude</button>`;
+      const button = document.createElement("button");
+      button.textContent = "Exclude";
+      button.dataset.name = a.name;
+      li.appendChild(document.createTextNode(`${a.name} - `));
+      li.appendChild(document.createTextNode(volume + "% "));
+      li.appendChild(button);
       list.appendChild(li);
     }
   } catch (e) {
     console.error('loadApps error', e);
-    list.innerHTML = '<li>Error loading apps</li>';
+    list.textContent = "";
+    const li = document.createElement("li");
+    li.textContent = "Error loading apps";
+    list.appendChild(li);
   }
 }
 
@@ -27,15 +35,22 @@ async function loadExcluded() {
   try {
     const r = await fetch(API_BASE + "/dialAudioMixer/excluded");
     const items = await r.json();
-    excludedList.innerHTML = "";
+    excludedList.textContent = "";
     for (const name of items) {
       const li = document.createElement("li");
-      li.innerHTML = `${name} <button data-name="${name}">Unexclude</button>`;
+      const button = document.createElement("button");
+      button.textContent = "Unexclude";
+      button.dataset.name = name;
+      li.appendChild(document.createTextNode(`${name} `));
+      li.appendChild(button);
       excludedList.appendChild(li);
     }
   } catch (e) {
     console.error('loadExcluded error', e);
-    excludedList.innerHTML = '<li>Error loading excluded list</li>';
+    excludedList.textContent = "";
+    const li = document.createElement("li");
+    li.textContent = "Error loading excluded list";
+    excludedList.appendChild(li);
   }
 }
 

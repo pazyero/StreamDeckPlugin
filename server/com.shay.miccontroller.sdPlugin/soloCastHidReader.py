@@ -421,11 +421,9 @@ class SoloCastHidMonitor:
 
             desired = not bool(current)
             endpoint_result = self._set_endpoint_mute(desired)
-            if self._state is not None and self._state != current:
-                endpoint_result = self._set_endpoint_mute(current)
             if endpoint_result["ok"]:
                 self._set_status(
-                    state=desired,
+                    state=bool(endpoint_result["muted"]),
                     connected=True,
                     last_error=None,
                 )

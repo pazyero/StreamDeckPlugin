@@ -5,10 +5,8 @@
 
 // WebSocket接続用
 let websocket = null;
-// プラグインUUID
-let pluginUUID = null;
-// アクションコンテキスト（各ボタン固有のUUID）
-let actionContext = null;
+// 表示中アクションのコンテキスト
+const actionContexts = new Set();
 // 現在表示中のタイトル
 let title = "(No Audio Apps)";
 // 設定保持用
@@ -44,7 +42,6 @@ sendDebug('loaded render');
 // =======================
 function connectElgatoPlugin(inUUID, inMessage, inAppInfo, inActionInfo) {
   // Stream Deck本体とのWebSocketを確立し、登録完了後にUI更新処理を開始する。
-  pluginUUID = inUUID;
   try {
     websocket = new WebSocket("ws://127.0.0.1:" + inAppInfo.port);
   } catch (e) {
@@ -77,12 +74,13 @@ function connectElgatoPlugin(inUUID, inMessage, inAppInfo, inActionInfo) {
 
     // ボタン表示時のコンテキスト取得
     if (ev === "willAppear") {
-      actionContext = msg.context;
+      actionContexts.add(msg.context);
       fetchApps();
     }
 
-    // まだコンテキストが未設定の場合は捕捉
-    if (!actionContext && msg.context) actionContext = msg.context;
+    if (ev === "willDisappear") {
+      actionContexts.delete(msg.context);
+    }
 
     // 設定更新イベント
     if (ev === "didReceiveSettings" || ev === "appearance") {
@@ -177,19 +175,24 @@ async function updateDialTitle() {
   const volPercent = Math.round(app.volume * 100);
   const imgData = await renderImageForDial(app.name, volPercent, app.mute, iconCache[app.name] || null);
 
-  const ctx = actionContext || pluginUUID;
-  websocket.send(JSON.stringify({
-    event: "setFeedback",
-    context: ctx,
-    payload: {
-      title: app.name,
-      value: volPercent + '%',
-      indicator: { value: volPercent },
-      icon: imgData
-    }
-  }));
+  sendFeedback({
+    title: app.name,
+    value: volPercent + '%',
+    indicator: { value: volPercent },
+    icon: imgData
+  });
 }
 
+function sendFeedback(payload) {
+  if (!websocket || websocket.readyState !== 1) return;
+  for (const context of actionContexts) {
+    websocket.send(JSON.stringify({
+      event: "setFeedback",
+      context,
+      payload
+    }));
+  }
+}
 
 // 音量表示更新
 function updateVolumeDisplay() {
@@ -209,16 +212,11 @@ function updateVolumeDisplay() {
   try {
     if (!app) return;
     const volPercent = Math.round(volume * 100);
-    const ctx = actionContext || pluginUUID;
-
-    const payload = {
-      event: "setFeedback",
-      context: ctx,
-      payload: { title: title, value: volPercent+'%', indicator: { value: volPercent } } // 画像なしで送信
-    };
-
-    // デバッグログ
-    websocket.send(JSON.stringify(payload));
+    sendFeedback({
+      title: title,
+      value: volPercent + '%',
+      indicator: { value: volPercent }
+    });
   } catch (e) {
     sendDebug('updateVolumeDisplay image error: ' + String(e)); 
   }

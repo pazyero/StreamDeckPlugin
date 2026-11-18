@@ -16,13 +16,15 @@ LOG_LEVELS = {
 }
 LOGGING_LEVEL = logging.INFO
 
-def set_logging_level(level: int = logging.INFO) -> None:
+def set_logging_level(level: Union[int, str] = logging.INFO) -> None:
 # アプリケーション共通のログ形式とレベルを設定する。
     global LOGGING_LEVEL
     if isinstance(level, str):
         LOGGING_LEVEL = LOG_LEVELS.get(level.strip().upper(), logging.INFO)
-    elif isinstance(level, int):
+    elif isinstance(level, int) and not isinstance(level, bool) and level in LOG_LEVELS.values():
         LOGGING_LEVEL = level
+    else:
+        LOGGING_LEVEL = logging.INFO
     logging.getLogger().setLevel(LOGGING_LEVEL)
 
 def configure_logging() -> None:
